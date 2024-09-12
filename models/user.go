@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/Fidel-wolee/event-booking/db"
@@ -24,8 +25,8 @@ func (user *User) Save() error {
 		return err
 	}
 	defer stmt.Close()
-	hashedPassword, err := utils.HashPassword(user.Password)	
-    fmt.Println(hashedPassword)
+	hashedPassword, err := utils.HashPassword(user.Password)
+	fmt.Println(hashedPassword)
 	if err != nil {
 		return err
 	}
@@ -59,4 +60,23 @@ func GetUser(id int64) (*User, error) {
 	}
 
 	return &user, nil
+}
+
+func (u User) ValidateCredentials() error{
+	query := "SELECT email, password FROM users WHERE email=?"
+	row := db.DB.QueryRow(query, u.Email)
+	var retrievePassword string
+	err := row.Scan(&retrievePassword)
+
+     if err != nil{
+		return err
+	 }
+
+	 passwordisValid := utils.CheckPasswordHash(u.Password, retrievePassword)
+     
+	 if !passwordisValid{
+		return errors.New("Credentials invalid")
+	 }
+
+	 return nil
 }

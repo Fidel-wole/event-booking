@@ -34,3 +34,21 @@ func getUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, user)
 }
+
+func login(c *gin.Context){
+	var user models.User
+	err := c.ShouldBindJSON(&user)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Cound not parse event id."})
+		return
+	}
+
+	err = user.ValidateCredentials()
+
+	if err != nil{
+		c.JSON(http.StatusUnauthorized, gin.H{"message":"Could not authenticate user"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message":"Login successful"})
+}
