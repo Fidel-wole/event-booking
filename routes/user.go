@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/Fidel-wolee/event-booking/models"
+	"github.com/Fidel-wolee/event-booking/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -36,19 +37,29 @@ func getUser(c *gin.Context) {
 }
 
 func login(c *gin.Context){
-	var user models.User
+	var user models.LoginUser
 	err := c.ShouldBindJSON(&user)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Cound not parse event id."})
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Cound not parse user data."})
 		return
 	}
 
 	err = user.ValidateCredentials()
 
-	if err != nil{
-		c.JSON(http.StatusUnauthorized, gin.H{"message":"Could not authenticate user"})
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Invalid credentials.",
+			"error":   err.Error(),
+		})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message":"Login successful"})
+
+	token, err := utils.GenerateToken(user.Email, user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Could not authentiate user", "error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message":"Login successful", "token":token})
 }

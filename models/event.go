@@ -15,8 +15,7 @@ type Event struct {
 	Location    string    `json:"location" binding:"required"`
 	DateTime    time.Time `json:"dateTime" binding:"required"`
 	UserID      int       `json:"userID"`
-}
-
+} 
 // Save method to insert an event into the database
 func (e *Event) Save() error {
 	query := `

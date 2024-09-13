@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/Fidel-wolee/event-booking/models"
+	"github.com/Fidel-wolee/event-booking/utils"
 )
 
 func GetEvents(c *gin.Context) {
@@ -19,17 +20,36 @@ func GetEvents(c *gin.Context) {
 }
 
 func CreateEvent(c *gin.Context) {
+	token := c.Request.Header.Get("Authorization")
+
+	// Check if the token is empty
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Not Authorized"})
+		return
+	}
+
+	// Verify the token
+	err := utils.VerifyToken(token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Not Authorized"})
+		return
+	}
+
 	var event models.Event
+
+	// Bind the request body to the event model
 	if err := c.ShouldBindJSON(&event); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request data", "error": err.Error()})
 		return
 	}
 
+	// Save the event
 	if err := event.Save(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Could not create event", "error": err.Error()})
 		return
 	}
 
+	// Success response
 	c.JSON(http.StatusCreated, gin.H{"message": "Event created successfully", "event": event})
 }
 
@@ -90,10 +110,10 @@ func DeleteEvent(c *gin.Context) {
 		return
 	}
 	err = event.Delete()
-    if err != nil{
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Could not delete event."})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message":"Event deleted successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Event deleted successfully"})
 }

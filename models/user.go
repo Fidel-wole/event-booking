@@ -16,6 +16,12 @@ type User struct {
 	Password string `json:"password" binding:"required"`
 }
 
+type LoginUser struct {
+	ID       int64  `json:"id"`
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
 func (user *User) Save() error {
 	query := `INSERT INTO users(name, email, password)
 	VALUES(?, ?, ?)
@@ -61,22 +67,28 @@ func GetUser(id int64) (*User, error) {
 
 	return &user, nil
 }
-
-func (u User) ValidateCredentials() error{
-	query := "SELECT email, password FROM users WHERE email=?"
+func (u LoginUser) ValidateCredentials() error {
+	query := "SELECT id, password FROM users WHERE email=?"
 	row := db.DB.QueryRow(query, u.Email)
-	var retrievePassword string
-	err := row.Scan(&retrievePassword)
 
-     if err != nil{
+	// Variables to scan the result
+	var storedID int64
+	var storedPassword string
+
+	// Scan the result into the variables
+	err := row.Scan(&storedID, &storedPassword)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return errors.New("no user found with the provided email")
+		}
 		return err
-	 }
+	}
 
-	 passwordisValid := utils.CheckPasswordHash(u.Password, retrievePassword)
-     
-	 if !passwordisValid{
-		return errors.New("Credentials invalid")
-	 }
+	// Check if the provided password is correct
+	passwordIsValid := utils.CheckPasswordHash(u.Password, storedPassword)
+	if !passwordIsValid {
+		return errors.New("incorrect password")
+	}
 
-	 return nil
+	return nil
 }
