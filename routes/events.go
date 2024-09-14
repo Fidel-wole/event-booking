@@ -1,13 +1,13 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/Fidel-wolee/event-booking/models"
-	"github.com/Fidel-wolee/event-booking/utils"
 )
 
 func GetEvents(c *gin.Context) {
@@ -20,38 +20,44 @@ func GetEvents(c *gin.Context) {
 }
 
 func CreateEvent(c *gin.Context) {
-	token := c.Request.Header.Get("Authorization")
+    // Retrieve userId from the context
+    userId, exists := c.Get("userId")
+    if !exists {
+        c.JSON(http.StatusUnauthorized, gin.H{"message": "User not authenticated"})
+        return
+    }
 
-	// Check if the token is empty
-	if token == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Not Authorized"})
-		return
-	}
+    // Ensure that userId is an int64, as it's set in AuthMiddleware
+    userIdInt64, ok := userId.(int64)
+    if !ok {
+        c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid user ID"})
+        return
+    }
 
-	// Verify the token
-	err := utils.VerifyToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "Not Authorized"})
-		return
-	}
+    // Print the user ID for debugging purposes
+    fmt.Printf("The user id is %v", userIdInt64)
 
-	var event models.Event
+    var event models.Event
 
-	// Bind the request body to the event model
-	if err := c.ShouldBindJSON(&event); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request data", "error": err.Error()})
-		return
-	}
+    // Bind the request body to the event model
+    if err := c.ShouldBindJSON(&event); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid request data", "error": err.Error()})
+        return
+    }
 
-	// Save the event
-	if err := event.Save(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Could not create event", "error": err.Error()})
-		return
-	}
+    // Assign the userId to the event
+    event.UserID = userIdInt64
 
-	// Success response
-	c.JSON(http.StatusCreated, gin.H{"message": "Event created successfully", "event": event})
+    // Save the event
+    if err := event.Save(); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"message": "Could not create event", "error": err.Error()})
+        return
+    }
+
+    // Success response
+    c.JSON(http.StatusCreated, gin.H{"message": "Event created successfully", "event": event})
 }
+
 
 func GetEvent(c *gin.Context) {
 	eventId, err := strconv.ParseInt(c.Param("id"), 10, 64)

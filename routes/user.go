@@ -36,30 +36,30 @@ func getUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-func login(c *gin.Context){
-	var user models.LoginUser
-	err := c.ShouldBindJSON(&user)
+func login(c *gin.Context) {
+    var user models.LoginUser
+    err := c.ShouldBindJSON(&user)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"message": "Could not parse user data."})
+        return
+    }
 
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "Cound not parse user data."})
-		return
-	}
+    // Validate credentials and get the user with ID
+    validatedUser, err := user.ValidateCredentials()
+    if err != nil {
+        c.JSON(http.StatusUnauthorized, gin.H{
+            "message": "Invalid credentials.",
+            "error":   err.Error(),
+        })
+        return
+    }
 
-	err = user.ValidateCredentials()
+    // Generate token with the validated user's email and ID
+    token, err := utils.GenerateToken(validatedUser.Email, validatedUser.ID)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"message": "Could not authenticate user", "error": err.Error()})
+        return
+    }
 
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "Invalid credentials.",
-			"error":   err.Error(),
-		})
-		return
-	}
-
-	token, err := utils.GenerateToken(user.Email, user.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "Could not authentiate user", "error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message":"Login successful", "token":token})
+    c.JSON(http.StatusOK, gin.H{"message": "Login successful", "token": token})
 }

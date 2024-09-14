@@ -67,7 +67,7 @@ func GetUser(id int64) (*User, error) {
 
 	return &user, nil
 }
-func (u LoginUser) ValidateCredentials() error {
+func (u *LoginUser) ValidateCredentials() (*LoginUser, error) {
 	query := "SELECT id, password FROM users WHERE email=?"
 	row := db.DB.QueryRow(query, u.Email)
 
@@ -79,16 +79,20 @@ func (u LoginUser) ValidateCredentials() error {
 	err := row.Scan(&storedID, &storedPassword)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return errors.New("no user found with the provided email")
+			return nil, errors.New("no user found with the provided email")
 		}
-		return err
+		return nil, err
 	}
 
 	// Check if the provided password is correct
 	passwordIsValid := utils.CheckPasswordHash(u.Password, storedPassword)
 	if !passwordIsValid {
-		return errors.New("incorrect password")
+		return nil, errors.New("incorrect password")
 	}
 
-	return nil
+	// Set the user's ID after successful validation
+	u.ID = storedID
+
+	// Return the user with the populated ID
+	return u, nil
 }

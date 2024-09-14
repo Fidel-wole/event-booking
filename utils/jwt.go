@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -16,7 +17,7 @@ func GenerateToken(email string, userId int64) (string, error) {
 		"userId": userId,
 		"exp":    time.Now().Add(time.Hour * 2).Unix(), // Set expiration time
 	}
-
+	fmt.Printf("Claims: %v\n", claims)
 	// Create the token with HS256 signing method
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -24,31 +25,35 @@ func GenerateToken(email string, userId int64) (string, error) {
 	return token.SignedString([]byte(secretKey))
 }
 
-func VerifyToken(token string) error {
-	parsedToken, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
+func VerifyToken(tokenString string) (int64, error) {
+    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+            return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+        }
+        return []byte(secretKey), nil
+    })
 
-		_, ok := token.Method.(*jwt.SigningMethodHMAC)
-		if !ok {
-			return nil, errors.New("unexpected signing method")
-		}
-		return secretKey, nil
-	})
-	if err != nil {
-		return errors.New("could not parse token")
-	}
+    if err != nil {
+        return 0, err
+    }
 
-	tokenIsValid := parsedToken.Valid
-	if !tokenIsValid{
-		return errors.New("invalid token")
-	}
+    claims, ok := token.Claims.(jwt.MapClaims)
+    if !ok {
+        return 0, errors.New("invalid claims")
+    }
 
-	// claims, ok := parsedToken.Claims.(jwt.MapClaims)
-	// if !ok{
-	// 	return errors.New("invalid token claims")
-	// }
+    // Debugging: print the claims to ensure they are correct
+    fmt.Printf("Claims: %v\n", claims)
 
-	// email := claims["email"].(string)
-	// userId := claims["userId"].(int64)
+    // Extract the userId from the claims and convert it to int64
+    userIdFloat, ok := claims["userId"].(float64)
+    if !ok {
+        return 0, errors.New("userId is not a valid number")
+    }
+    userId := int64(userIdFloat)
 
-	return nil
+    // Debugging: print the userId to check its value
+    fmt.Printf("Extracted userId: %d\n", userId)
+
+    return userId, nil
 }

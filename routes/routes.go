@@ -1,14 +1,24 @@
 package routes
 
-import "github.com/gin-gonic/gin"
+import (
+	"github.com/gin-gonic/gin"
+   "github.com/Fidel-wolee/event-booking/middleware"
+)
 
 func RegisterRoutes(server *gin.Engine) {
-	server.GET("/events", GetEvents)   // GET endpoint to fetch events
-	server.POST("/event", CreateEvent) // POST endpoint to create a new event
+	// Public routes
+	server.GET("/events", GetEvents)
 	server.GET("/events/:id", GetEvent)
-	server.PUT("/event/:id", UpdateEvent)
-	server.DELETE("/events/:id", DeleteEvent)
 	server.POST("/signup", signup)
-	server.GET("/user/:id", getUser)
 	server.POST("/login", login)
+
+	// Protected routes
+	authorized := server.Group("/")
+	authorized.Use(middleware.AuthMiddleware())
+	{
+		authorized.POST("/events", CreateEvent)
+		authorized.PUT("/events/:id", UpdateEvent)
+		authorized.DELETE("/events/:id", DeleteEvent)
+		authorized.GET("/user/:id", getUser)
+	}
 }
